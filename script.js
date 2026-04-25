@@ -1,25 +1,25 @@
 // ==============================================
-// СВАДЕБНЫЙ САЙТ - ФРОНТЕНД
-// Мария & Алексей | 15.09.2024
+// СВАДЕБНЫЙ САЙТ - МАРК & ПОЛИНА
+// С интеграцией Google Sheets
 // ==============================================
 
 // Конфигурация
 const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbw3mQQ9vOq-hQY__dD84Kemg4VBCmgtQOrby87ZRVX2S7Du7OzEMUccZ5moxJC7wHipGQ/exec', // ЗАМЕНИТЕ НА ВАШ URL
-    TELEGRAM_CHAT_URL: 'https://t.me/+hOTwCMbLMwI3ZDYy', // ЗАМЕНИТЕ НА ВАШУ ССЫЛКУ НА ЧАТ
-    WEDDING_DATE: '2026-07-24T16:20:00' // Дата свадьбы
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzsnArsJuEsUfN4HujI5RkiggWYWo_ABlNR6lMRS3lGrY2s1-yNYAPFvOiBIOxLNkMC/exec', // ЗАМЕНИТЕ НА ВАШ URL
+    WEDDING_DATE: '2026-07-24T16:20:00'
 };
 
 // Прелоадер
 document.addEventListener('DOMContentLoaded', function() {
     const loader = document.querySelector('.loader');
-    setTimeout(() => {
-        loader.style.opacity = '0';
-        loader.style.visibility = 'hidden';
-    }, 800);
+    if (loader) {
+        setTimeout(() => {
+            loader.style.opacity = '0';
+            loader.style.visibility = 'hidden';
+        }, 800);
+    }
     
-    // Инициализация
-    initTelegramLink();
+    initRSVPForm();
 });
 
 // Таймер обратного отсчета
@@ -47,21 +47,189 @@ function updateCountdown() {
     document.getElementById('seconds').innerText = seconds.toString().padStart(2, '0');
 }
 
-// Запускаем таймер
 updateCountdown();
 setInterval(updateCountdown, 1000);
+
+// ========== БАЗОВЫЕ СТИЛИ АНИМАЦИЙ ==========
+const coreStyles = document.createElement('style');
+coreStyles.textContent = `
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(coreStyles);
+
+// ========== УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ==========
+function showModal(title, message, isError = false) {
+    const existingModal = document.getElementById('customModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'customModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+    `;
+
+    const icon = isError ? '✕' : '✓';
+    const iconColor = isError ? '#c62828' : '#2e7d32';
+    const bgIconColor = isError ? '#ffebee' : '#e8f5e9';
+    const borderColor = isError ? '#c62828' : '#2e7d32';
+
+    modal.innerHTML = `
+        <div style="
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 32px 40px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 35px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s ease;
+            border-top: 3px solid ${borderColor};
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        ">
+            <div style="
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: ${bgIconColor};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px auto;
+            ">
+                <div style="
+                    font-size: 32px;
+                    font-weight: 400;
+                    color: ${iconColor};
+                    line-height: 1;
+                ">${icon}</div>
+            </div>
+            <h3 style="
+                font-size: 24px;
+                font-weight: 500;
+                color: #1a1a1a;
+                margin-bottom: 12px;
+                letter-spacing: -0.3px;
+            ">${title}</h3>
+            <p style="
+                font-size: 16px;
+                color: #555555;
+                margin-bottom: 28px;
+                line-height: 1.5;
+            ">${message}</p>
+            <button onclick="this.closest('#customModal').remove()" style="
+                background: #f5f5f5;
+                color: #333333;
+                border: none;
+                padding: 12px 32px;
+                border-radius: 40px;
+                font-family: inherit;
+                font-size: 15px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='#e8e8e8'" onmouseout="this.style.background='#f5f5f5'">
+                Закрыть
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    if (!isError) {
+        setTimeout(() => {
+            if (modal.parentElement) modal.remove();
+        }, 4000);
+    }
+}
+
+// ========== МОДАЛЬНОЕ ОКНО ЗАГРУЗКИ ==========
+function showLoadingModal() {
+    const existingLoading = document.getElementById('loadingModal');
+    if (existingLoading) existingLoading.remove();
+    
+    const loadingModal = document.createElement('div');
+    loadingModal.id = 'loadingModal';
+    loadingModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    `;
+    loadingModal.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 16px;
+            padding: 32px 40px;
+            text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        ">
+            <div style="
+                width: 50px;
+                height: 50px;
+                border: 3px solid #e0e0e0;
+                border-top-color: #b89474;
+                border-radius: 50%;
+                margin: 0 auto 20px;
+                animation: spin 1s linear infinite;
+            "></div>
+            <p style="
+                font-size: 15px;
+                color: #666;
+                margin: 0;
+            ">Отправка ответа...</p>
+        </div>
+    `;
+    document.body.appendChild(loadingModal);
+    return loadingModal;
+}
 
 // Управление количеством гостей
 const guestsInput = document.getElementById('guests');
 const minusBtn = document.querySelector('.minus-btn');
 const plusBtn = document.querySelector('.plus-btn');
 
-if (minusBtn && plusBtn) {
+if (minusBtn && plusBtn && guestsInput) {
     minusBtn.addEventListener('click', function() {
         let currentValue = parseInt(guestsInput.value);
         if (currentValue > 1) {
             guestsInput.value = currentValue - 1;
-            if (navigator.vibrate) navigator.vibrate(30);
         }
     });
     
@@ -69,7 +237,6 @@ if (minusBtn && plusBtn) {
         let currentValue = parseInt(guestsInput.value);
         if (currentValue < 10) {
             guestsInput.value = currentValue + 1;
-            if (navigator.vibrate) navigator.vibrate(30);
         }
     });
     
@@ -80,195 +247,90 @@ if (minusBtn && plusBtn) {
     });
 }
 
-// Настройка ссылки на Telegram чат
-function initTelegramLink() {
-    const chatLink = document.querySelector('.chat-link');
-    if (chatLink && CONFIG.TELEGRAM_CHAT_URL) {
-        chatLink.href = CONFIG.TELEGRAM_CHAT_URL;
-        chatLink.target = '_blank';
-        chatLink.rel = 'noopener noreferrer';
-    }
-}
-
-// Обработка формы RSVP
-const rsvpForm = document.getElementById('rsvp-form');
-if (rsvpForm) {
+// ========== GOOGLE SHEETS ОТПРАВКА ==========
+function initRSVPForm() {
+    const rsvpForm = document.getElementById('rsvp-form');
+    if (!rsvpForm) return;
+    
     rsvpForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Валидация
-        const attendanceSelected = document.querySelector('input[name="attendance"]:checked');
-        if (!attendanceSelected) {
-            showError('Пожалуйста, выберите, сможете ли вы прийти');
-            return;
-        }
+        const submitBtn = this.querySelector('.submit-btn');
+        const originalContent = submitBtn.innerHTML;
         
+        // Получаем данные
         const name = document.getElementById('name').value.trim();
-        const contact = document.getElementById('contact').value.trim();
+        const attendanceRadio = document.querySelector('input[name="attendance"]:checked');
+        const attendance = attendanceRadio ? attendanceRadio.value : null;
+        const guests = document.getElementById('guests') ? document.getElementById('guests').value : '1';
+        const message = document.getElementById('message') ? document.getElementById('message').value.trim() : '';
         
+        // Валидация
         if (!name) {
-            showError('Пожалуйста, введите ваше имя');
+            showModal('Ошибка', 'Пожалуйста, введите ваше имя', true);
             document.getElementById('name').focus();
             return;
         }
         
-        if (!contact) {
-            showError('Пожалуйста, введите email или телефон для связи');
-            document.getElementById('contact').focus();
+        if (!attendance) {
+            showModal('Ошибка', 'Пожалуйста, выберите вариант присутствия', true);
             return;
         }
         
-        // Подготовка данных
-        const formData = {
-            name: name,
-            contact: contact,
-            attendance: attendanceSelected.value,
-            guests: document.getElementById('guests').value,
-            message: document.getElementById('message').value.trim() || ''
-        };
+        // Показываем загрузку
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Отправка...</span>';
+        submitBtn.disabled = true;
         
-        // Отправка
-        await submitRSVP(formData);
-    });
-}
-
-// Функция отправки данных
-async function submitRSVP(formData) {
-    const submitBtn = document.querySelector('.submit-btn');
-    const originalContent = submitBtn.innerHTML;
-    
-    // Показываем индикатор загрузки
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Отправка...</span>';
-    submitBtn.disabled = true;
-    
-    try {
-        // Создаем FormData для отправки
-        const data = new URLSearchParams();
-        data.append('name', formData.name);
-        data.append('contact', formData.contact);
-        data.append('attendance', formData.attendance);
-        data.append('guests', formData.guests);
-        data.append('message', formData.message);
+        const loadingModal = showLoadingModal();
         
-        // Отправляем запрос
-        const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
-            method: 'POST',
-            body: data,
-            mode: 'no-cors'
-        });
-        
-        // Успешная отправка
-        showSuccess(formData.name);
-        
-    } catch (error) {
-        console.error('Ошибка отправки:', error);
-        showSuccess(formData.name); // Показываем успех даже при ошибке (fallback)
-    } finally {
-        // Восстанавливаем кнопку
-        submitBtn.innerHTML = originalContent;
-        submitBtn.disabled = false;
-    }
-}
-
-// Показать сообщение об успехе
-function showSuccess(guestName) {
-    const form = document.getElementById('rsvp-form');
-    const successMessage = document.getElementById('success-message');
-    
-    // Персонализируем сообщение
-    const successTitle = successMessage.querySelector('h3');
-    const successText = successMessage.querySelector('p');
-    
-    successTitle.textContent = `Спасибо, ${guestName}!`;
-    successText.textContent = 'Ваш ответ успешно отправлен! Мы будем с нетерпением ждать встречи на нашей свадьбе.';
-    
-    // Показываем/скрываем
-    form.style.display = 'none';
-    successMessage.style.display = 'block';
-    
-    // Прокручиваем к сообщению
-    successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // Скрываем клавиатуру
-    document.activeElement.blur();
-    
-    // Вибрация
-    if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-}
-
-// Показать ошибку
-function showError(message) {
-    // Создаем элемент ошибки
-    let errorDiv = document.querySelector('.form-error');
-    
-    if (!errorDiv) {
-        errorDiv = document.createElement('div');
-        errorDiv.className = 'form-error';
-        errorDiv.style.cssText = `
-            background: #fff5f5;
-            border: 1px solid #feb2b2;
-            color: #c53030;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: fadeIn 0.3s ease;
-        `;
-        
-        const formHeader = document.querySelector('.form-header');
-        if (formHeader) {
-            formHeader.parentNode.insertBefore(errorDiv, formHeader.nextSibling);
-        } else {
-            rsvpForm.insertBefore(errorDiv, rsvpForm.firstChild);
-        }
-    }
-    
-    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
-    // Автоудаление через 5 секунд
-    setTimeout(() => {
-        if (errorDiv && errorDiv.parentNode) {
-            errorDiv.style.opacity = '0';
-            errorDiv.style.transform = 'translateY(-10px)';
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.parentNode.removeChild(errorDiv);
+        try {
+            const formDataToSend = new URLSearchParams();
+            formDataToSend.append('name', name);
+            formDataToSend.append('attendance', attendance);
+            formDataToSend.append('guests', guests);
+            formDataToSend.append('message', message);
+            
+            const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formDataToSend.toString()
+            });
+            
+            const result = await response.json();
+            
+            loadingModal.remove();
+            
+            if (result.result === 'success') {
+                if (attendance === 'yes') {
+                    showModal(
+                        'Спасибо, ' + name + '!',
+                        'Мы будем ждать вас на нашей свадьбе 24 июля 2026 года! 🎉',
+                        false
+                    );
+                } else {
+                    showModal(
+                        'Спасибо за ответ!',
+                        'Очень жаль, что вы не сможете быть с нами в этот день.',
+                        false
+                    );
                 }
-            }, 300);
+                // Очищаем форму
+                rsvpForm.reset();
+                if (guestsInput) guestsInput.value = '1';
+            } else {
+                throw new Error(result.message || 'Ошибка отправки');
+            }
+        } catch (error) {
+            loadingModal.remove();
+            showModal(
+                'Ошибка',
+                error.message || 'Произошла ошибка при отправке. Пожалуйста, попробуйте ещё раз.',
+                true
+            );
+        } finally {
+            submitBtn.innerHTML = originalContent;
+            submitBtn.disabled = false;
         }
-    }, 5000);
-    
-    // Вибрация
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-}
-
-// Кнопка "Заполнить ещё один ответ"
-const newResponseBtn = document.getElementById('new-response');
-if (newResponseBtn) {
-    newResponseBtn.addEventListener('click', function() {
-        const form = document.getElementById('rsvp-form');
-        const successMessage = document.getElementById('success-message');
-        
-        // Сбрасываем форму
-        form.reset();
-        guestsInput.value = 1;
-        
-        // Удаляем сообщения об ошибках
-        const errors = document.querySelectorAll('.form-error');
-        errors.forEach(error => error.remove());
-        
-        // Показываем форму
-        successMessage.style.display = 'none';
-        form.style.display = 'block';
-        
-        // Прокручиваем к форме
-        form.scrollIntoView({ behavior: 'smooth' });
-        
-        // Фокус на первое поле
-        document.getElementById('name').focus();
     });
 }
 
@@ -296,7 +358,6 @@ function animateOnScroll() {
     
     elements.forEach(element => {
         const elementTop = element.getBoundingClientRect().top;
-        
         if (elementTop < windowHeight - 100) {
             element.style.opacity = '1';
             element.style.transform = 'translateY(0)';
@@ -316,47 +377,3 @@ document.addEventListener('touchend', function(event) {
     }
     lastTouchEnd = now;
 }, false);
-
-// Улучшение UX для iOS
-if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    document.addEventListener('focus', function(e) {
-        if (e.target.matches('input, textarea, select')) {
-            setTimeout(() => {
-                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
-        }
-    }, true);
-}
-
-// Анимация иконок
-document.querySelectorAll('.icon-circle').forEach(icon => {
-    icon.addEventListener('touchstart', function() {
-        this.style.transform = 'scale(0.95)';
-    });
-    
-    icon.addEventListener('touchend', function() {
-        this.style.transform = 'scale(1.05)';
-        setTimeout(() => {
-            this.style.transform = 'scale(1)';
-        }, 150);
-    });
-});
-
-// Добавляем CSS для анимаций
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .fa-spinner {
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(style);
